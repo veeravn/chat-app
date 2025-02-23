@@ -28,3 +28,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+db-data
+logs
+node_modules/
+build

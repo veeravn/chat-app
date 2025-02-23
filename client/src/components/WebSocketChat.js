@@ -1,113 +1,85 @@
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import "tailwindcss/tailwind.css";
+import React, { useState, useEffect } from "react";
 
-const WebSocketChat = () => {
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [recipient, setRecipient] = useState("");
-    const [message, setMessage] = useState("");
+const WebSocketChat = ({ username }) => {
     const [messages, setMessages] = useState([]);
-    const [typing, setTyping] = useState("");
-    const [onlineUsers, setOnlineUsers] = useState([]);
-    const [authenticated, setAuthenticated] = useState(false);
-    const [theme, setTheme] = useState("light");
-    const socketRef = useRef(null);
+    const [message, setMessage] = useState("");
+    const [recipient, setRecipient] = useState("");
+    const [typing, setTyping] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
+    const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        document.body.className = theme === "dark" ? "bg-gray-900 text-white" : "bg-white text-black";
-    }, [theme]);
+        const ws = new WebSocket("ws://load-balancer:8080/ws");
 
-    const authenticateUser = async () => {
-        if (!username || !password) {
-            alert("Please enter a username and password");
-            return;
-        }
-        try {
-            const response = await axios.post("http://localhost:5000/api/auth", { username, password });
-            if (response.data.success) {
-                setAuthenticated(true);
-                connectWebSocket();
-            } else {
-                alert("Invalid credentials");
-            }
-        } catch (error) {
-            alert("Authentication failed");
-        }
-    };
-
-    const connectWebSocket = () => {
-        if (!authenticated) {
-            alert("Please log in first");
-            return;
-        }
-        socketRef.current = new WebSocket("ws://localhost:8080/ws");
-        socketRef.current.onopen = () => {
+        ws.onopen = () => {
             console.log("Connected to WebSocket server");
-            socketRef.current.send(JSON.stringify({ type: "join", user: username }));
+            ws.send(JSON.stringify({ sender: username }));
         };
-        socketRef.current.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === "message" && data.recipient === username) {
-                setMessages((prevMessages) => [...prevMessages, `${data.user} -> You: ${data.message} (Delivered)`]);
-                socketRef.current.send(JSON.stringify({ type: "read_receipt", user: username, sender: data.user }));
-            } else if (data.type === "typing") {
-                setTyping(`${data.user} is typing...`);
-                setTimeout(() => setTyping(""), 3000);
-            } else if (data.type === "online_users") {
-                setOnlineUsers(data.users);
-            } else if (data.type === "read_receipt" && data.user === username) {
-                alert(`Your message was read by ${data.sender}`);
+
+        ws.onmessage = (event) => {
+            const receivedMsg = JSON.parse(event.data);
+            if (receivedMsg.type === "typing") {
+                setIsTyping(receivedMsg.sender !== username);
+                return;
             }
+            setMessages((prev) => [...prev, receivedMsg]);
         };
-        socketRef.current.onclose = () => {
-            console.log("Disconnected from WebSocket server");
-        };
-    };
+
+        setSocket(ws);
+
+        return () => ws.close();
+    }, [username]);
 
     const sendMessage = () => {
-        if (!recipient) {
-            alert("Please enter a recipient username");
-            return;
-        }
-        if (message && socketRef.current) {
-            socketRef.current.send(JSON.stringify({ type: "message", user: username, message, recipient }));
+        if (socket && message.trim() !== "" && recipient.trim() !== "") {
+            const msgData = {
+                sender: username,
+                recipient: recipient,
+                content: message,
+                read: false
+            };
+            socket.send(JSON.stringify(msgData));
             setMessage("");
         }
     };
 
-    const sendTypingStatus = () => {
-        if (socketRef.current) {
-            socketRef.current.send(JSON.stringify({ type: "typing", user: username }));
+    const handleTyping = () => {
+        if (socket && !typing) {
+            setTyping(true);
+            socket.send(JSON.stringify({ type: "typing", sender: username }));
+            setTimeout(() => setTyping(false), 2000);
         }
     };
 
     return (
-        <div className="flex flex-col items-center p-4">
-            <h2 className="text-2xl font-bold">WebSocket Private Chat</h2>
-            <button className="mb-4 px-4 py-2 bg-gray-600 text-white rounded" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
-                Toggle {theme === "light" ? "Dark" : "Light"} Mode
+        <div className="p-4">
+            <h2 className="text-xl font-bold">Private Chat</h2>
+            <div className="border p-2 h-40 overflow-auto bg-gray-100">
+                {messages.map((msg, index) => (
+                    <p key={index} className={msg.read ? "text-gray-500" : "text-black"}>
+                        <strong>{msg.sender} to {msg.recipient}:</strong> {msg.content} {msg.read && "✔️"}
+                    </p>
+                ))}
+                {isTyping && <p className="text-gray-500">{recipient} is typing...</p>}
+            </div>
+            <input
+                type="text"
+                placeholder="Recipient Username"
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                className="p-2 border rounded w-full mt-2"
+            />
+            <input
+                type="text"
+                placeholder="Message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleTyping}
+                className="p-2 border rounded w-full mt-2"
+            />
+            <button onClick={sendMessage} className="p-2 mt-2 bg-blue-500 text-white rounded">
+                Send
             </button>
-            {!authenticated ? (
-                <div className="flex flex-col gap-2">
-                    <input className="p-2 border rounded" type="text" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)} />
-                    <input className="p-2 border rounded" type="password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={authenticateUser}>Login</button>
-                </div>
-            ) : (
-                <div className="flex flex-col gap-2">
-                    <p className="text-sm italic">{typing}</p>
-                    <p className="text-sm">Online Users: {onlineUsers.join(", ")}</p>
-                    <ul className="border p-2 h-40 overflow-y-auto">
-                        {messages.map((msg, index) => (
-                            <li key={index} className="p-1 border-b">{msg}</li>
-                        ))}
-                    </ul>
-                    <input className="p-2 border rounded" type="text" placeholder="Recipient username" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
-                    <input className="p-2 border rounded" type="text" placeholder="Type a message..." value={message} onChange={(e) => setMessage(e.target.value)} onInput={sendTypingStatus} />
-                    <button className="px-4 py-2 bg-green-600 text-white rounded" onClick={sendMessage}>Send</button>
-                </div>
-            )}
         </div>
     );
 };
