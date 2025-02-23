@@ -44,9 +44,18 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Health check handler
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "OK")
+}
+
 func main() {
 	http.HandleFunc("/ws", handleConnections)
-	fmt.Println("WebSocket server running on ws://localhost:8080/ws")
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/health", healthCheckHandler)
+
+	port := ":8080"
+	fmt.Println("WebSocket server running on port", port)
+	http.ListenAndServe(port, nil)
 }
 

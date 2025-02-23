@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  websocket-server:
+    build: .
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+    command: ["/bin/bash", "-c", "./log_servers.sh & ./websocket_server --port=8081"]
+    ports:
+      - "8081-8083:8081-8083"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      retries: 3
+      timeout: 10s
+
+  load-balancer:
+    build: .
+    command: ["/bin/bash", "-c", "./log_servers.sh & ./websocket_server --port=8080"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      - websocket-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      retries: 3
+      timeout: 10s
+
