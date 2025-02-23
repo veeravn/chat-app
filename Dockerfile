@@ -8,6 +8,7 @@ RUN go mod download
 COPY . .
 
 RUN chmod +x start_servers.sh
+RUN chmod +x load_balancer.sh
 RUN chmod +x log_servers.sh
 
 EXPOSE 8080
