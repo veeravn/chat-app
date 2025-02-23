@@ -1,61 +1,60 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-	"github.com/gorilla/websocket"
+    "fmt"
+    "net/http"
+    "github.com/gorilla/websocket"
+    "sync"
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+    CheckOrigin: func(r *http.Request) bool {
+        return true
+    },
 }
 
-var clients = make(map[*websocket.Conn]bool)
+var clients = make(map[*websocket.Conn]string)
+var mu sync.Mutex
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println("Error upgrading to WebSocket:", err)
-		return
-	}
-	defer conn.Close()
+    conn, err := upgrader.Upgrade(w, r, nil)
+    if err != nil {
+        fmt.Println("Error upgrading to WebSocket:", err)
+        return
+    }
+    defer conn.Close()
 
-	clients[conn] = true
-	fmt.Println("New client connected")
+    mu.Lock()
+    clients[conn] = ""
+    mu.Unlock()
 
-	for {
-		messageType, msg, err := conn.ReadMessage()
-		if err != nil {
-			fmt.Println("Client disconnected")
-			delete(clients, conn)
-			break
-		}
-		fmt.Printf("Received: %s\n", msg)
+    fmt.Println("New client connected")
 
-		for client := range clients {
-			if err := client.WriteMessage(messageType, msg); err != nil {
-				fmt.Println("Error sending message:", err)
-				client.Close()
-				delete(clients, client)
-			}
-		}
-	}
-}
+    for {
+        _, msg, err := conn.ReadMessage()
+        if err != nil {
+            fmt.Println("Client disconnected")
+            mu.Lock()
+            delete(clients, conn)
+            mu.Unlock()
+            break
+        }
 
-// Health check handler
-func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+        fmt.Printf("Received: %s
+", msg)
+
+        mu.Lock()
+        for client := range clients {
+            if client != conn {
+                client.WriteMessage(websocket.TextMessage, msg)
+            }
+        }
+        mu.Unlock()
+    }
 }
 
 func main() {
-	http.HandleFunc("/ws", handleConnections)
-	http.HandleFunc("/health", healthCheckHandler)
-
-	port := ":8080"
-	fmt.Println("WebSocket server running on port", port)
-	http.ListenAndServe(port, nil)
+    http.HandleFunc("/ws", handleConnections)
+    fmt.Println("WebSocket server running on port 8080")
+    http.ListenAndServe(":8080", nil)
 }
-
