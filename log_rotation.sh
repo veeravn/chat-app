@@ -25,4 +25,3 @@ while true; do
     done
     sleep 60  # Check logs every minute
 done
-

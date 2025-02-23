@@ -1,18 +1,8 @@
 #!/bin/bash
 
-# Number of WebSocket server instances
-NUM_SERVERS=3
+PORT=${1:-8080}  # Default port is 8080 if not specified
 
-# Starting WebSocket servers on different ports
-for ((i=1; i<=NUM_SERVERS; i++)); do
-    PORT=$((8080 + i))
-    echo "Starting WebSocket server on port $PORT..."
-    go run websocket_server_with_health.go --port=$PORT &
-done
+echo "Starting WebSocket server with authentication on port $PORT..."
+go run server.go --port=$PORT &
 
-echo "Starting Load Balancer on port 8080..."
-go run load_balancer.go &
-
-echo "All WebSocket servers started with logging."
 wait
-

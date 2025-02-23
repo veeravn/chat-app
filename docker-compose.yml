@@ -4,28 +4,19 @@ services:
   websocket-server:
     build: .
     deploy:
-      replicas: 3
+      replicas: 3  # Run multiple instances of the WebSocket server
       restart_policy:
         condition: on-failure
-    command: ["/bin/bash", "-c", "./log_servers.sh & ./websocket_server --port=8081"]
+    environment:
+      - PORT=8080
     ports:
-      - "8081-8083:8081-8083"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      retries: 3
-      timeout: 10s
+      - "8081-8083:8080"  # Exposing each replica on different local ports
+    command: ["/bin/bash", "-c", "./start_servers.sh $PORT"]
 
   load-balancer:
     build: .
-    command: ["/bin/bash", "-c", "./log_servers.sh & ./websocket_server --port=8080"]
     ports:
       - "8080:8080"
     depends_on:
       - websocket-server
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      retries: 3
-      timeout: 10s
-
+    command: ["/bin/bash", "-c", "./load_balancer.sh"]

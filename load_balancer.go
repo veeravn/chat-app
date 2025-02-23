@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"sync/atomic"
-	"github.com/gorilla/websocket"
-	"net/http/httputil"
 )
 
 var serverList = []string{
@@ -44,8 +43,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/ws", handleWebSocket)
-	http.HandleFunc("/health", healthCheckHandler)
 	fmt.Println("WebSocket Load Balancer running on ws://localhost:8080/ws")
 	http.ListenAndServe(":8080", nil)
 }
-
