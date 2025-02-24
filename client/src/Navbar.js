@@ -1,5 +1,6 @@
 import React from "react";
-import CreateUser from "./CreateUser";
+import { Link } from "react-router-dom";
+
 const Navbar = ({ username, onLogout }) => {
     return (
         <nav className="bg-gray-800 text-white p-4 flex justify-between">
@@ -13,12 +14,11 @@ const Navbar = ({ username, onLogout }) => {
                         </button>
                     </>
                 ) : (
-                    <button onClick={() => setShowCreateUser(!showCreateUser)} className="bg-green-500 px-3 py-1 rounded">
-                        {showCreateUser ? "Close" : "Create User"}
-                    </button>
+                    <Link to="/create-user" className="bg-green-500 px-3 py-1 rounded">
+                        Create Account
+                    </Link>
                 )}
             </div>
-            {showCreateUser && <CreateUser />}
         </nav>
     );
 };

@@ -1,36 +1,49 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import WebSocketChat from "./WebSocketChat";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import CreateUser from "./CreateUser";
 import Login from "./Login";
 import Navbar from "./Navbar";
+import WebSocketChat from "./WebSocketChat";
+import { useNavigate } from "react-router-dom";
+
+const AppWrapper = () => {
+    return (
+        <Router>
+            <App />
+        </Router>
+    );
+};
 
 const App = () => {
     const [username, setUsername] = useState("");
+    const navigate = useNavigate();
 
     const handleLogin = (user) => {
         if (user && user.trim() !== "") {
-            setUsername(user.trim()); // Set and trim username
+            setUsername(user.trim());
             console.log("User logged in:", user);
+            navigate("/chat"); // Redirect to chat page after login
         }
     };
 
     const handleLogout = () => {
-        setUsername(""); // Clear username on logout
+        setUsername("");
         console.log("User logged out");
+        navigate("/"); // Redirect to login page after logout
     };
 
     return (
-        <div>
+        <>
             <Navbar username={username} onLogout={handleLogout} />
             <div className="p-4">
-                {!username ? (
-                    <Login onLogin={handleLogin} />
-                ) : (
-                    <WebSocketChat username={username} />
-                )}
+                <Routes>
+                    <Route path="/create-user" element={<CreateUser />} />
+                    <Route path="/chat" element={username ? <WebSocketChat username={username} /> : <Login onLogin={handleLogin} />} />
+                    <Route path="/" element={!username ? <Login onLogin={handleLogin} /> : <p>Welcome, {username}!</p>} />
+                </Routes>
             </div>
-        </div>
+        </>
     );
 };
 
-export default App;
+export default AppWrapper;
