@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const Login = ({ setUser }) => {
+const Login = ({ onLogin }) => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [message, setMessage] = useState("");
@@ -14,8 +14,9 @@ const Login = ({ setUser }) => {
             });
 
             if (response.data.success) {
-                setUser(username);
+                setUsername(username);
                 setMessage("Login successful!");
+                onLogin(username);
             } else {
                 setMessage("Invalid credentials.");
             }

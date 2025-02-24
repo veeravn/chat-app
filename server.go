@@ -17,13 +17,13 @@ import (
 var db *gorm.DB
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow connections from any origin
+		return true
 	},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
-var clients = make(map[*websocket.Conn]string) // Mapping WebSocket connections to usernames
+var clients = make(map[string]*websocket.Conn) // 🔥 Map usernames to WebSocket connections
 var mu sync.Mutex
 
 type ChatUser struct {
@@ -113,72 +113,48 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	var username string
-	err = json.NewDecoder(r.Body).Decode(&username)
-	if err != nil || username == "" {
-		http.Error(w, "Invalid username", http.StatusBadRequest)
+	var user struct {
+		Username string `json:"username"`
+	}
+	err = conn.ReadJSON(&user)
+	if err != nil {
+		fmt.Println("Error reading username JSON:", err)
 		return
 	}
 
 	mu.Lock()
-	clients[conn] = username
+	clients[user.Username] = conn // 🔥 Store the WebSocket connection by username
 	mu.Unlock()
 
-	fmt.Printf("%s connected\n", username)
+	fmt.Printf("%s connected\n", user.Username)
 
 	for {
 		var msg Message
 		err := conn.ReadJSON(&msg)
 		if err != nil {
-			fmt.Printf("User %s disconnected\n", username)
+			fmt.Printf("User %s disconnected\n", user.Username)
 			mu.Lock()
-			delete(clients, conn)
+			delete(clients, user.Username)
 			mu.Unlock()
 			break
 		}
 
-		if msg.Type == "typing" {
-			broadcastTypingIndicator(msg.Sender, msg.Recipient)
-			continue
-		}
+		fmt.Printf("Message from %s to %s: %s\n", msg.Sender, msg.Recipient, msg.Content)
 
 		msg.Timestamp = time.Now()
 		msg.Read = false
-
-		fmt.Printf("Message from %s to %s: %s\n", msg.Sender, msg.Recipient, msg.Content)
-
-		db.Create(&msg)
-		sendPushNotification(msg.Recipient, msg.Content)
+		db.Create(&msg) // 🔥 Store message in the database
 
 		mu.Lock()
-		for client, user := range clients {
-			if user == msg.Recipient {
-				client.WriteJSON(msg)
-				db.Model(&Message{}).Where("sender = ? AND recipient = ?", msg.Sender, msg.Recipient).Update("read", true)
-			}
+		recipientConn, exists := clients[msg.Recipient] // 🔥 Retrieve recipient's connection
+		if exists {
+			fmt.Printf("Recipient %s is online")
+			recipientConn.WriteJSON(msg) // 🔥 Send message to recipient if online
+		} else {
+			fmt.Printf("Recipient %s is offline")
 		}
 		mu.Unlock()
 	}
-}
-
-func broadcastTypingIndicator(sender string, recipient string) {
-	msg := Message{
-		Sender:    sender,
-		Recipient: recipient,
-		Type:      "typing",
-	}
-
-	mu.Lock()
-	for client, user := range clients {
-		if user == recipient {
-			client.WriteJSON(msg)
-		}
-	}
-	mu.Unlock()
-}
-
-func sendPushNotification(recipient string, content string) {
-	fmt.Printf("Push notification sent to %s: %s\n", recipient, content)
 }
 
 func main() {
@@ -189,7 +165,12 @@ func main() {
 	mux.HandleFunc("/api/auth", authHandler)
 	mux.HandleFunc("/api/register", registerHandler)
 
-	handler := cors.Default().Handler(mux)
+	handler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowCredentials: true,
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+	}).Handler(mux)
 
 	fmt.Println("Server running on port 8080")
 	http.ListenAndServe(":8080", handler)

@@ -2,7 +2,7 @@ services:
   websocket-server:
     build: .
     deploy:
-      replicas: 3
+      replicas: 1
       restart_policy:
         condition: on-failure
     environment:

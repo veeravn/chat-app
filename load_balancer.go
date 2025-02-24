@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
-
-	"github.com/rs/cors"
 )
 
 var serverList []string
@@ -86,8 +84,6 @@ func main() {
 	mux.HandleFunc("/ws", handleWebSocket)
 	mux.HandleFunc("/api/", handleAPIRequests)
 
-	handler := cors.Default().Handler(mux)
-
 	fmt.Println("Load Balancer running on http://localhost:8080")
-	http.ListenAndServe(":8080", handler)
+	http.ListenAndServe(":8080", mux)
 }

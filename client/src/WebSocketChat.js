@@ -4,50 +4,49 @@ const WebSocketChat = ({ username }) => {
     const [messages, setMessages] = useState([]);
     const [message, setMessage] = useState("");
     const [recipient, setRecipient] = useState("");
-    const [typing, setTyping] = useState(false);
-    const [isTyping, setIsTyping] = useState(false);
-    const [socket, setSocket] = useState(null);
+    const [ws, setWs] = useState(null);
 
     useEffect(() => {
-        const ws = new WebSocket("ws://localhost:8080/ws");
+        if (!username) {
+            console.error("WebSocketChat received undefined username");
+            return;
+        }
 
-        ws.onopen = () => {
-            console.log("Connected to WebSocket server");
-            ws.send(JSON.stringify({ sender: username }));
+        console.log("WebSocketChat initialized with username:", username);
+
+        const websocket = new WebSocket("ws://localhost:8080/ws");
+
+        websocket.onopen = () => {
+            console.log("Connected to WebSocket server as", username);
+            websocket.send(JSON.stringify({ username }));
         };
 
-        ws.onmessage = (event) => {
-            const receivedMsg = JSON.parse(event.data);
-            if (receivedMsg.type === "typing") {
-                setIsTyping(receivedMsg.sender !== username);
-                return;
-            }
-            setMessages((prev) => [...prev, receivedMsg]);
+        websocket.onmessage = (event) => {
+            const receivedData = JSON.parse(event.data);
+            console.log("Received WebSocket message:", receivedData);
+            
+            setMessages((prev) => [...prev, receivedData]);
         };
 
-        setSocket(ws);
+        websocket.onclose = () => {
+            console.log("Disconnected from WebSocket server");
+        };
 
-        return () => ws.close();
+        setWs(websocket);
+        return () => websocket.close();
     }, [username]);
 
     const sendMessage = () => {
-        if (socket && message.trim() !== "" && recipient.trim() !== "") {
+        if (ws && message.trim() !== "" && recipient.trim() !== "") {
             const msgData = {
                 sender: username,
                 recipient: recipient,
                 content: message,
-                read: false
             };
-            socket.send(JSON.stringify(msgData));
-            setMessage("");
-        }
-    };
 
-    const handleTyping = () => {
-        if (socket && !typing) {
-            setTyping(true);
-            socket.send(JSON.stringify({ type: "typing", sender: username }));
-            setTimeout(() => setTyping(false), 2000);
+            ws.send(JSON.stringify(msgData));
+            setMessages((prev) => [...prev, msgData]); // 🔥 Show message in sender's chat
+            setMessage("");
         }
     };
 
@@ -56,11 +55,10 @@ const WebSocketChat = ({ username }) => {
             <h2 className="text-xl font-bold">Private Chat</h2>
             <div className="border p-2 h-40 overflow-auto bg-gray-100">
                 {messages.map((msg, index) => (
-                    <p key={index} className={msg.read ? "text-gray-500" : "text-black"}>
-                        <strong>{msg.sender} to {msg.recipient}:</strong> {msg.content} {msg.read && "✔️"}
+                    <p key={index}>
+                        <strong>{msg.sender} to {msg.recipient}:</strong> {msg.content}
                     </p>
                 ))}
-                {isTyping && <p className="text-gray-500">{recipient} is typing...</p>}
             </div>
             <input
                 type="text"
@@ -74,7 +72,6 @@ const WebSocketChat = ({ username }) => {
                 placeholder="Message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleTyping}
                 className="p-2 border rounded w-full mt-2"
             />
             <button onClick={sendMessage} className="p-2 mt-2 bg-blue-500 text-white rounded">

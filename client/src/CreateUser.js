@@ -6,6 +6,7 @@ const CreateUser = () => {
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [message, setMessage] = useState("");
+    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
 
     const handleCreateUser = async () => {
         if (!username || !password) {
@@ -19,18 +20,23 @@ const CreateUser = () => {
         }
 
         try {
-            const response = await axios.post("http://load-balancer:8080/api/register", {
-                username,
-                password,
+            const response = await fetch(`${API_URL}/api/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
             });
-
-            if (response.data.success) {
-                setMessage("User created successfully! You can now log in.");
-            } else {
-                setMessage(response.data.message || "Error creating user.");
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Registration failed:", errorData);
+                alert(`Registration error: ${errorData.message || "Unknown error"}`);
+                return;
             }
+    
+            console.log("User registered successfully");
         } catch (error) {
-            setMessage("Server error. Please try again.");
+            console.error("Error registering user:", error);
+            alert("Network error: Failed to connect to the server.");
         }
     };
 
