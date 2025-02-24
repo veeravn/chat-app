@@ -128,6 +128,13 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("%s connected\n", user.Username)
 
+	var unreadMessages []Message
+	db.Where("recipient = ? AND read = ?", user.Username, false).Find(&unreadMessages)
+	for _, msg := range unreadMessages {
+		conn.WriteJSON(msg)
+		db.Model(&Message{}).Where("id = ?", msg.ID).Update("read", true)
+	}
+
 	for {
 		var msg Message
 		err := conn.ReadJSON(&msg)

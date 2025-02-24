@@ -25,7 +25,13 @@ const WebSocketChat = ({ username }) => {
             const receivedData = JSON.parse(event.data);
             console.log("Received WebSocket message:", receivedData);
             
-            setMessages((prev) => [...prev, receivedData]);
+            if (Array.isArray(receivedData)) {
+                // If the received data is an array, it's the unread messages
+                setMessages(receivedData);
+            } else {
+                // Otherwise, it's a new message
+                setMessages((prev) => [...prev, receivedData]);
+            }
         };
 
         websocket.onclose = () => {
