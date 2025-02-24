@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   websocket-server:
     build: .
@@ -45,7 +43,6 @@ services:
       - .env
     volumes:
       - ${PWD}/db-data/:/var/lib/postgresql/data/
-      - ${PWD}/schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "psql -U postgres -d postgres -c 'SELECT 1' || exit 1"]
       interval: 20s

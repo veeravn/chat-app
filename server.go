@@ -17,14 +17,16 @@ import (
 var db *gorm.DB
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true
+		return true // Allow connections from any origin
 	},
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 }
 
 var clients = make(map[*websocket.Conn]string) // Mapping WebSocket connections to usernames
 var mu sync.Mutex
 
-type User struct {
+type ChatUser struct {
 	ID       uint   `gorm:"primaryKey"`
 	Username string `gorm:"uniqueIndex"`
 	Password string
@@ -48,13 +50,22 @@ type Credentials struct {
 func initDB() {
 	var err error
 	dsn := os.Getenv("DATABASE_URL")
+
+	if dsn == "" {
+		fmt.Println("DATABASE_URL is not set")
+		os.Exit(1)
+	}
+
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		fmt.Println("Failed to connect to database:", err)
 		os.Exit(1)
 	}
 
-	db.AutoMigrate(&User{}, &Message{})
+	fmt.Println("Database connected successfully")
+
+	// AutoMigrate will create/update tables as needed
+	db.AutoMigrate(&ChatUser{}, &Message{})
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +75,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := User{Username: creds.Username, Password: creds.Password}
+	user := ChatUser{Username: creds.Username, Password: creds.Password}
 	result := db.Create(&user)
 	if result.Error != nil {
 		http.Error(w, "User already exists", http.StatusConflict)
@@ -83,7 +94,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user User
+	var user ChatUser
 	result := db.Where("username = ? AND password = ?", creds.Username, creds.Password).First(&user)
 	if result.Error != nil {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)

@@ -9,7 +9,7 @@ const WebSocketChat = ({ username }) => {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        const ws = new WebSocket("ws://load-balancer:8080/ws");
+        const ws = new WebSocket("ws://localhost:8080/ws");
 
         ws.onopen = () => {
             console.log("Connected to WebSocket server");

@@ -48,6 +48,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		Director: func(req *http.Request) {
 			req.URL = u
 			req.Host = u.Host
+			req.Header.Set("Connection", "Upgrade")
+			req.Header.Set("Upgrade", "websocket")
 		},
 		ModifyResponse: func(res *http.Response) error {
 			res.Header.Set("Connection", "Upgrade")
