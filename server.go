@@ -148,10 +148,10 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		recipientConn, exists := clients[msg.Recipient] // 🔥 Retrieve recipient's connection
 		if exists {
-			fmt.Printf("Recipient %s is online")
+			fmt.Printf("Recipient %s is online", msg.Recipient)
 			recipientConn.WriteJSON(msg) // 🔥 Send message to recipient if online
 		} else {
-			fmt.Printf("Recipient %s is offline")
+			fmt.Printf("Recipient %s is offline", msg.Recipient)
 		}
 		mu.Unlock()
 	}

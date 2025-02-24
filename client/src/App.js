@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import WebSocketChat from "./WebSocketChat";
 import Login from "./Login";
-import CreateUser from "./CreateUser";
 import Navbar from "./Navbar";
 
 const App = () => {
