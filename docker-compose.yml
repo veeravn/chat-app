@@ -12,7 +12,7 @@ services:
     ports:
       - "8081-8083:8080"
     depends_on:
-      postgres:
+      cassandra:
         condition: service_healthy
     command: ["/bin/bash", "-c", "./start_servers.sh $PORT"]
 
@@ -35,21 +35,23 @@ services:
     env_file:
       - .env
 
-  postgres:
-    image: 'postgres:latest'
+  cassandra:
+    image: cassandra:latest
+    container_name: cassandra_db
     ports:
-      - 5432:5432
-    env_file:
-      - .env
-    volumes:
-      - ${PWD}/db-data/:/var/lib/postgresql/data/
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TestCluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_RACK=rack1
     healthcheck:
-      test: ["CMD-SHELL", "psql -U postgres -d postgres -c 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT * from system_schema.tables;' || exit 1"]
       interval: 20s
       retries: 5
       start_period: 30s
       timeout: 10s
-  
+    volumes:
+     - db-data:/var/lib/cassandra
 
 volumes:
   db-data:

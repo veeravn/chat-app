@@ -18,7 +18,9 @@ const WebSocketChat = ({ username }) => {
 
         websocket.onopen = () => {
             console.log("Connected to WebSocket server as", username);
-            websocket.send(JSON.stringify({ username }));
+            if (websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ username }));
+            }
         };
 
         websocket.onmessage = (event) => {
