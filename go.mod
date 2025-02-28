@@ -1,4 +1,4 @@
-module chatt-app
+module chat-app
 
 go 1.23
 
