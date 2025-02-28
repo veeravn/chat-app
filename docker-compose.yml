@@ -2,7 +2,7 @@ services:
   websocket-server:
     build: .
     deploy:
-      replicas: 1
+      replicas: 3
       restart_policy:
         condition: on-failure
     environment:
@@ -12,6 +12,8 @@ services:
     ports:
       - "8081-8083:8080"
     depends_on:
+      redis:
+        condition: service_healthy
       cassandra:
         condition: service_healthy
     command: ["/bin/bash", "-c", "./start_servers.sh $PORT"]
@@ -52,6 +54,14 @@ services:
       timeout: 10s
     volumes:
      - db-data:/var/lib/cassandra
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+    ports:
+      - "6379:6379"
 
 volumes:
   db-data:
