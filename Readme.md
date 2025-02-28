@@ -151,6 +151,3 @@ To scale WebSocket servers:
 docker-compose up --scale ws-server=5 --build
 ```
 This launches **5 WebSocket replicas**, ensuring **high availability**.
-
----
-Let me know if you need any modifications! 🚀🔥
