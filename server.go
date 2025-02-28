@@ -262,7 +262,7 @@ func processForwardedMessage(conn *websocket.Conn, rawMessage json.RawMessage) {
 }
 
 func markMessageAsReadInCassandra(recipient string, msgID gocql.UUID) {
-	query := "UPDATE chat.messages SET read = true WHERE recipient = ? and id = ?"
+	query := "UPDATE messages SET read = true WHERE recipient = ? and id = ?"
 	err := session.Query(query, recipient, msgID).Exec()
 	if err != nil {
 		log.Printf("❌ Failed to mark message as read in Cassandra: %v", err)
@@ -315,7 +315,7 @@ func initDB() {
 func storeMessageInCassandra(msg Message) {
 	msg.ID = gocql.TimeUUID() // Generate unique message ID
 
-	query := "INSERT INTO chat.messages (id, sender, recipient, content, timestamp, read) VALUES (?, ?, ?, ?, ?, ?)"
+	query := "INSERT INTO messages (id, sender, recipient, content, timestamp, read) VALUES (?, ?, ?, ?, ?, ?)"
 	err := session.Query(query, msg.ID, msg.Sender, msg.Recipient, msg.Content, msg.Timestamp, msg.Read).Exec()
 
 	if err != nil {
